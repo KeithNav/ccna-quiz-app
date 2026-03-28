@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCNA Vizsgaszimulátor</title>
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <div class="hero-copy">
+                <p class="eyebrow">CCNA Exam Simulator</p>
+                <h1>55 kérdéses vizsgaszimuláció a meglévő kérdésbankból</h1>
+                <p class="hero-text">Minden reset új, véletlen 55 kérdéses vizsgát generál. A végén azonnal látod a jó és rossz válaszokat, és vissza is tudod nézni a hibákat a helyes megoldással együtt.</p>
+            </div>
+            <div class="hero-panel">
+                <div class="metric">
+                    <span class="metric-label">Aktív vizsga</span>
+                    <strong id="question-count">55 kérdés</strong>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Megválaszolva</span>
+                    <strong id="answered-count">0 / 55</strong>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Támogatott tétel</span>
+                    <strong id="pool-count">0</strong>
+                </div>
+            </div>
+        </header>
+
+        <main class="content-grid">
+            <aside class="sidebar">
+                <section class="panel controls-panel">
+                    <h2>Vezérlés</h2>
+                    <div class="button-row">
+                        <button id="evaluate-button" class="primary-button" type="button">Vizsga kiértékelése</button>
+                        <button id="reset-button" class="ghost-button" type="button">Reset és új kérdéssor</button>
+                    </div>
+                    <p class="sidebar-note">A reset törli az aktuális válaszokat és egy új véletlen kérdéssort készít.</p>
+                </section>
+
+                <section class="panel legend-panel">
+                    <h2>Jelmagyarázat</h2>
+                    <p><span class="status-dot unanswered"></span> Nincs még kitöltve</p>
+                    <p><span class="status-dot correct"></span> Helyes válasz</p>
+                    <p><span class="status-dot incorrect"></span> Hibás válasz</p>
+                </section>
+
+                <section id="summary-panel" class="panel summary-panel hidden" aria-live="polite"></section>
+            </aside>
+
+            <section class="quiz-column">
+                <div id="quiz-container" class="quiz-list"></div>
+                <section id="review-panel" class="panel review-panel hidden"></section>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
