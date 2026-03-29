@@ -33,18 +33,34 @@
             <aside class="sidebar">
                 <section class="panel controls-panel">
                     <h2>Vezérlés</h2>
+                    <label class="control-field" for="track-select">
+                        <span class="control-label">Vizsgamodul</span>
+                        <select id="track-select" class="control-select">
+                            <option value="ccna1">CCNA1</option>
+                            <option value="ccna2" disabled>CCNA2 - hamarosan</option>
+                        </select>
+                    </label>
                     <div class="button-row">
                         <button id="evaluate-button" class="primary-button" type="button">Vizsga kiértékelése</button>
                         <button id="reset-button" class="ghost-button" type="button">Reset és új kérdéssor</button>
                     </div>
-                    <p class="sidebar-note">A reset törli az aktuális válaszokat és egy új véletlen kérdéssort készít.</p>
+                    <p id="track-note" class="sidebar-note">A reset törli az aktuális válaszokat és egy új véletlen kérdéssort készít.</p>
                 </section>
 
                 <section class="panel legend-panel">
                     <h2>Jelmagyarázat</h2>
                     <p><span class="status-dot unanswered"></span> Nincs még kitöltve</p>
+                    <p><span class="status-dot answered"></span> Kitöltve</p>
                     <p><span class="status-dot correct"></span> Helyes válasz</p>
                     <p><span class="status-dot incorrect"></span> Hibás válasz</p>
+                </section>
+
+                <section class="panel nav-panel">
+                    <div class="panel-heading">
+                        <h2>Kérdésnavigáció</h2>
+                        <span id="nav-status-text" class="panel-tag">Ugrás kérdésre</span>
+                    </div>
+                    <div id="question-nav" class="question-nav" aria-label="Kérdések gyors elérése"></div>
                 </section>
 
                 <section id="summary-panel" class="panel summary-panel hidden" aria-live="polite"></section>

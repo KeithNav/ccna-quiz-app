@@ -2,18 +2,39 @@ import "./styles.css";
 import rawQuestionBank from "../ccna.json";
 
 const QUESTION_COUNT = 55;
-const SESSION_STORAGE_KEY = "ccna-quiz-app/session-state/v1";
+const SESSION_STORAGE_KEY = "ccna-quiz-app/session-state/v2";
+const QUESTION_BANKS = {
+    ccna1: {
+        label: "CCNA1",
+        questionBank: rawQuestionBank,
+        available: true,
+        note: "A reset törli az aktuális válaszokat és egy új véletlen kérdéssort készít."
+    },
+    ccna2: {
+        label: "CCNA2",
+        questionBank: [],
+        available: false,
+        note: "A CCNA2 kérdésbank még nincs bekötve, de a választó már elő van készítve hozzá."
+    }
+};
+const DEFAULT_TRACK_ID = "ccna1";
 
 const state = {
+    activeTrackId: DEFAULT_TRACK_ID,
     bank: [],
     examQuestions: [],
     answers: new Map(),
     submitted: false,
-    results: []
+    results: [],
+    activeQuestionId: null
 };
 
 const elements = {
     quizContainer: document.getElementById("quiz-container"),
+    questionNav: document.getElementById("question-nav"),
+    navStatusText: document.getElementById("nav-status-text"),
+    trackSelect: document.getElementById("track-select"),
+    trackNote: document.getElementById("track-note"),
     summaryPanel: document.getElementById("summary-panel"),
     reviewPanel: document.getElementById("review-panel"),
     evaluateButton: document.getElementById("evaluate-button"),
@@ -28,6 +49,36 @@ function getSessionStorage() {
         return window.sessionStorage;
     } catch {
         return null;
+    }
+}
+
+function getActiveTrack() {
+    return QUESTION_BANKS[state.activeTrackId] || QUESTION_BANKS[DEFAULT_TRACK_ID];
+}
+
+function setActiveTrack(trackId) {
+    const nextTrack = QUESTION_BANKS[trackId];
+
+    if (!nextTrack || !nextTrack.available) {
+        state.activeTrackId = DEFAULT_TRACK_ID;
+    } else {
+        state.activeTrackId = trackId;
+    }
+
+    state.bank = getActiveTrack().questionBank
+        .map(normalizeQuestion)
+        .filter(Boolean);
+}
+
+function syncTrackControls() {
+    const activeTrack = getActiveTrack();
+
+    if (elements.trackSelect) {
+        elements.trackSelect.value = state.activeTrackId;
+    }
+
+    if (elements.trackNote) {
+        elements.trackNote.textContent = activeTrack.note;
     }
 }
 
@@ -76,6 +127,7 @@ function saveSessionState() {
     }
 
     const payload = {
+        activeTrackId: state.activeTrackId,
         examQuestions: state.examQuestions,
         answers: serializeAnswers(),
         submitted: state.submitted,
@@ -110,8 +162,11 @@ function restoreSessionState() {
 
     try {
         const parsedState = JSON.parse(rawState);
+        const savedTrackId = typeof parsedState.activeTrackId === "string" ? parsedState.activeTrackId : DEFAULT_TRACK_ID;
         const examQuestions = Array.isArray(parsedState.examQuestions) ? parsedState.examQuestions : [];
         const results = Array.isArray(parsedState.results) ? parsedState.results : [];
+
+        setActiveTrack(savedTrackId);
 
         if (!examQuestions.length || !examQuestions.every(isValidSavedQuestion) || !hasMatchingBankQuestions(examQuestions)) {
             clearSessionState();
@@ -122,6 +177,7 @@ function restoreSessionState() {
         state.answers = hydrateAnswers(parsedState.answers);
         state.submitted = Boolean(parsedState.submitted);
         state.results = state.submitted ? results : [];
+        syncTrackControls();
         return true;
     } catch {
         clearSessionState();
@@ -263,6 +319,14 @@ function getQuestionStatus(questionId) {
     return result && result.isCorrect ? "correct" : "incorrect";
 }
 
+function getNavigationStatus(question) {
+    if (state.submitted) {
+        return getQuestionStatus(question.id);
+    }
+
+    return isAnswered(question) ? "answered" : "unanswered";
+}
+
 function isAnswered(question) {
     const answer = state.answers.get(question.id);
 
@@ -284,8 +348,92 @@ function isAnswered(question) {
 function updateProgress() {
     const answered = state.examQuestions.filter(isAnswered).length;
     elements.answeredCount.textContent = `${answered} / ${state.examQuestions.length}`;
-    elements.questionCount.textContent = `${state.examQuestions.length} kérdés`;
+    elements.questionCount.textContent = `${getActiveTrack().label} · ${state.examQuestions.length} kérdés`;
     elements.poolCount.textContent = String(state.bank.length);
+
+    if (elements.navStatusText) {
+        if (state.submitted) {
+            const correctCount = state.results.filter((entry) => entry.isCorrect).length;
+            elements.navStatusText.textContent = `${correctCount}/${state.examQuestions.length} helyes`;
+        } else {
+            elements.navStatusText.textContent = `${answered}/${state.examQuestions.length} kitöltve`;
+        }
+    }
+}
+
+function setActiveQuestion(questionId) {
+    if (!questionId || state.activeQuestionId === questionId) {
+        return;
+    }
+
+    state.activeQuestionId = questionId;
+
+    if (!elements.questionNav) {
+        return;
+    }
+
+    const navButtons = elements.questionNav.querySelectorAll(".question-nav-button");
+    navButtons.forEach((button) => {
+        const isActive = button.dataset.questionId === questionId;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-current", isActive ? "true" : "false");
+    });
+}
+
+function renderQuestionNavigation() {
+    if (!elements.questionNav) {
+        return;
+    }
+
+    elements.questionNav.innerHTML = state.examQuestions.map((question, index) => {
+        const status = getNavigationStatus(question);
+        const isActive = question.id === state.activeQuestionId;
+
+        return `
+            <button
+                type="button"
+                class="question-nav-button ${status} ${isActive ? "active" : ""}"
+                data-question-id="${escapeHtml(question.id)}"
+                aria-label="Ugrás a(z) ${index + 1}. kérdésre"
+                aria-current="${isActive ? "true" : "false"}"
+            >
+                ${index + 1}
+            </button>
+        `;
+    }).join("");
+}
+
+function scrollToQuestion(questionId) {
+    const questionElement = document.getElementById(questionId);
+
+    if (!questionElement) {
+        return;
+    }
+
+    setActiveQuestion(questionId);
+    questionElement.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function syncActiveQuestionWithViewport() {
+    const questionCards = [...document.querySelectorAll(".question-card")];
+
+    if (!questionCards.length) {
+        return;
+    }
+
+    const viewportAnchor = window.innerHeight * 0.24;
+    let closestId = questionCards[0].id;
+    let minDistance = Number.POSITIVE_INFINITY;
+
+    questionCards.forEach((card) => {
+        const distance = Math.abs(card.getBoundingClientRect().top - viewportAnchor);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestId = card.id;
+        }
+    });
+
+    setActiveQuestion(closestId);
 }
 
 function renderTables(question) {
@@ -399,7 +547,13 @@ function renderQuestions() {
         `;
     }).join("");
 
+    if (!state.activeQuestionId && state.examQuestions.length) {
+        state.activeQuestionId = state.examQuestions[0].id;
+    }
+
+    renderQuestionNavigation();
     updateProgress();
+    syncActiveQuestionWithViewport();
 }
 
 function setChoiceAnswer(questionId, value, checked) {
@@ -556,6 +710,7 @@ function generateExam() {
     state.answers = new Map();
     state.results = [];
     state.submitted = false;
+    state.activeQuestionId = state.examQuestions[0]?.id ?? null;
     resetPanels();
     renderQuestions();
     saveSessionState();
@@ -589,21 +744,52 @@ function bindEvents() {
         }
 
         updateProgress();
+        renderQuestionNavigation();
         saveSessionState();
     });
+
+    elements.trackSelect.addEventListener("change", (event) => {
+        const target = event.target;
+
+        if (!(target instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        setActiveTrack(target.value);
+        syncTrackControls();
+        generateExam();
+    });
+
+    elements.questionNav.addEventListener("click", (event) => {
+        const target = event.target;
+
+        if (!(target instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const { questionId } = target.dataset;
+
+        if (!questionId) {
+            return;
+        }
+
+        scrollToQuestion(questionId);
+    });
+
+    window.addEventListener("scroll", syncActiveQuestionWithViewport, { passive: true });
 
     elements.evaluateButton.addEventListener("click", evaluateExam);
     elements.resetButton.addEventListener("click", generateExam);
 }
 
 function init() {
-    state.bank = rawQuestionBank
-        .map(normalizeQuestion)
-        .filter(Boolean);
+    setActiveTrack(DEFAULT_TRACK_ID);
+    syncTrackControls();
 
     bindEvents();
 
     if (restoreSessionState()) {
+        state.activeQuestionId = state.examQuestions[0]?.id ?? null;
         renderQuestions();
 
         if (state.submitted) {
