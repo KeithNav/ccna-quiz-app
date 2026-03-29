@@ -1,5 +1,6 @@
 import "./styles.css";
 import rawQuestionBank from "../ccna.json";
+import rawQuestionBankCcna2 from "../ccna2.json";
 
 const QUESTION_COUNT = 55;
 const SESSION_STORAGE_KEY = "ccna-quiz-app/session-state/v2";
@@ -12,9 +13,9 @@ const QUESTION_BANKS = {
     },
     ccna2: {
         label: "CCNA2",
-        questionBank: [],
-        available: false,
-        note: "A CCNA2 kérdésbank még nincs bekötve, de a választó már elő van készítve hozzá."
+        questionBank: rawQuestionBankCcna2,
+        available: true,
+        note: "A CCNA2 bank a mentett 174 sorszámos forrásoldalból készült. Ebből 168 kérdés tölthető be közvetlenül interaktív vizsgához a jelenlegi kérdéstípusokkal."
     }
 };
 const DEFAULT_TRACK_ID = "ccna1";
